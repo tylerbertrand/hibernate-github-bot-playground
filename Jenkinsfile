@@ -1,3 +1,5 @@
+@Library('hibernate-jenkins-pipeline-helpers') _
+
 def withMavenWorkspace(Closure body) {
 	withMaven(jdk: 'OpenJDK 17 Latest', maven: 'Apache Maven 3.9',
 			mavenLocalRepo: env.WORKSPACE_TMP + '/.m2repository',
@@ -5,8 +7,8 @@ def withMavenWorkspace(Closure body) {
 					artifactsPublisher(disabled: true),
 					junitPublisher(disabled: true)
 			]) {
-		withCredentials([string(credentialsId: 'ge.hibernate.org-access-key',
-				variable: 'GRADLE_ENTERPRISE_ACCESS_KEY')]) {
+		// These credentials can only push reports.
+		withCredentials([string(credentialsId: 'ge.hibernate.org-access-key-pr')]) {
 			withGradle { // withDevelocity, actually: https://plugins.jenkins.io/gradle/#plugin-content-capturing-build-scans-from-jenkins-pipeline
 				body()
 			}
@@ -21,6 +23,11 @@ pipeline {
 		disableConcurrentBuilds(abortPrevious: true)
 	}
 	stages {
+		stage('Checks') {
+			steps {
+				requireApprovalForPullRequest 'hibernate'
+			}
+		}
 		stage('Default build') {
 			agent {
 				label 'Worker&&Containers'
